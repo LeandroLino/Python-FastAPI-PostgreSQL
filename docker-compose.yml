@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fastapi_db
+      POSTGRES_USER: fastapi_user
+      POSTGRES_PASSWORD: fastapi_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fastapi_user -d fastapi_db']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  app:
+    build: .
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://fastapi_user:fastapi_password@db:5432/fastapi_db
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    command:
+      [
+        'sh',
+        '-c',
+        'sleep 30 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload',
+      ]
+
+volumes:
+  postgres_data:
